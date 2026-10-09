@@ -1,0 +1,254 @@
+import type { P } from "./types";
+
+export interface Box { minX: number; maxX: number; minZ: number; maxZ: number }
+export interface Building extends Box { h: number; color: string; heritage?: boolean }
+
+/** Irregular street lines echoing Lagos Island: deep blocks between Marina and Broad St, tighter old-town blocks north. */
+export const LINES = [-200, -120, 0, 80, 200];
+export const FLYOVER_Z = -120;
+const OLD = [-200, -100, 0, 100, 200];
+/** Re-anchor a hand-placed spot (authored against the old even grid) onto the real street lines. */
+function remap(v: number) {
+  let k = 0;
+  for (let i = 1; i < OLD.length; i++) if (Math.abs(OLD[i] - v) < Math.abs(OLD[k] - v)) k = i;
+  return LINES[k] + (v - OLD[k]);
+}
+export const HALF_ROAD = 8;
+
+/** Curving Marina expressway hugging the lagoon south of the grid; joins the grid corners at (±200, -200). */
+export const MARINA_CURVE: P[] = Array.from({ length: 41 }, (_, i) => {
+  const x = -200 + i * 10;
+  return { x, z: -200 - 48 * Math.sin((Math.PI * (x + 200)) / 400) };
+});
+export function distToMarina(x: number, z: number) {
+  let best = Infinity;
+  for (let i = 0; i < MARINA_CURVE.length - 1; i++) {
+    const a = MARINA_CURVE[i], b = MARINA_CURVE[i + 1];
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz)));
+    best = Math.min(best, Math.hypot(x - (a.x + dx * t), z - (a.z + dz * t)));
+  }
+  return best;
+}
+
+/** Angled old-town streets of Lagos Island that cut across the blocks at real-world bearings. */
+export const DIAGONALS: { name: string; pts: P[] }[] = [
+  { name: "Nnamdi Azikiwe St", pts: [{ x: -200, z: 200 }, { x: -150, z: 130 }, { x: -120, z: 80 }, { x: -60, z: 30 }, { x: 0, z: 0 }] },
+  { name: "Docemo / Ereko St", pts: [{ x: -120, z: 0 }, { x: -85, z: -50 }, { x: -60, z: -90 }, { x: -30, z: -120 }] },
+  { name: "Igbosere Rd", pts: [{ x: 80, z: 0 }, { x: 130, z: -45 }, { x: 165, z: -85 }, { x: 200, z: -120 }] },
+  { name: "Tinubu Square Link", pts: [{ x: 0, z: -120 }, { x: 35, z: -70 }, { x: 60, z: -30 }, { x: 80, z: 0 }] },
+  { name: "Adeniji Adele Rd", pts: [{ x: 80, z: 200 }, { x: 120, z: 150 }, { x: 160, z: 110 }, { x: 200, z: 80 }] },
+];
+function nearDiagonal(b: { minX: number; maxX: number; minZ: number; maxZ: number }, pad: number) {
+  for (const d of DIAGONALS)
+    for (let i = 0; i < d.pts.length - 1; i++) {
+      const a = d.pts[i], c = d.pts[i + 1];
+      const n = Math.ceil(Math.hypot(c.x - a.x, c.z - a.z) / 2);
+      for (let k = 0; k <= n; k++) {
+        const x = a.x + ((c.x - a.x) * k) / n, z = a.z + ((c.z - a.z) * k) / n;
+        if (x > b.minX - pad && x < b.maxX + pad && z > b.minZ - pad && z < b.maxZ + pad) return true;
+      }
+    }
+  return false;
+}
+
+export function rng(seed: number) {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const PALETTE = ["#f2e3c6", "#e8b07a", "#d9734e", "#5fb3a8", "#f4d35e", "#e6e1d3", "#8fb8de", "#c97b84", "#f0a868", "#9cc69b"];
+const HERITAGE = ["#f3d9a4", "#e9b8a0", "#cfe3c6", "#f2c4a0", "#efe6d2"];
+const STALL = ["#e63946", "#f4a261", "#2a9d8f", "#e9c46a", "#457b9d", "#8ac926", "#ff6b9a"];
+const SIGNS: [string, string, string][] = [
+  ["WELCOME TO LAGOS ISLAND", "#0b6e4f", "#ffffff"],
+  ["BALOGUN MARKET", "#d62828", "#fcbf49"],
+  ["GO-SLOW? NO WAHALA", "#fcbf49", "#1d3557"],
+  ["MAMA PUT - BROAD ST", "#2a9d8f", "#fefae0"],
+  ["SUYA SPOT IDUMOTA", "#6a040f", "#ffba08"],
+  ["EKO O NI BAJE", "#1d3557", "#f1faee"],
+  ["CMS BUS TERMINAL", "#ffd60a", "#000814"],
+  ["POS / BUREAU DE CHANGE", "#7b2cbf", "#ffd6ff"],
+];
+/** Real Lagos Island street names mapped onto the road lines (z = horizontal, x = vertical). */
+export const STREET_Z: Record<number, string> = { [-200]: "Marina", [-120]: "Broad Street", 0: "Martins Street", 80: "Nnamdi Azikiwe St", 200: "Ebute Ero / Carter Bridge Rd" };
+export const STREET_X: Record<number, string> = { [-200]: "Idumota Rd", [-120]: "Balogun St", 0: "Odunlami St", 80: "Joseph St", 200: "CMS / Bishop Crowther" };
+export const NECOM = { x: 50, z: 50, w: 16, h: 95 };
+export const GPT_COLORS = ["#1a1a1a", "#2a2a2a", "#1d4ed8", "#111"];
+
+export function buildWorld() {
+  const r = rng(1337);
+  const buildings: Building[] = [];
+  const colliders: Box[] = [];
+  const palms: P[] = [];
+  const stalls: { x: number; z: number; color: string }[] = [];
+  const billboards: { x: number; z: number; rot: number; text: string; bg: string; fg: string }[] = [];
+  const sidewalks: P[][] = [];
+  const blocks: Box[] = [];
+  const routes: P[][] = [];
+
+  for (let i = 0; i < 4; i++)
+    for (let j = 0; j < 4; j++) {
+      const a = LINES[i], b = LINES[i + 1], c = LINES[j], d = LINES[j + 1];
+      blocks.push({ minX: a + 8, maxX: b - 8, minZ: c + 8, maxZ: d - 8 });
+      sidewalks.push([{ x: a + 10, z: c + 10 }, { x: b - 10, z: c + 10 }, { x: b - 10, z: d - 10 }, { x: a + 10, z: d - 10 }]);
+      const market = i === 1 && j === 3;
+      if (market) {
+        for (let gx = 0; gx < 6; gx++)
+          for (let gz = 0; gz < 5; gz++) {
+            const x = a + 20 + gx * 12, z = c + 20 + gz * 14;
+            stalls.push({ x, z, color: STALL[Math.floor(r() * STALL.length)] });
+            colliders.push({ minX: x - 1.6, maxX: x + 1.6, minZ: z - 1.2, maxZ: z + 1.2 });
+          }
+      } else {
+        const cell = (b - a - 24) / 3;
+        for (let cx = 0; cx < 3; cx++)
+          for (let cz = 0; cz < 3; cz++) {
+            if (r() > 0.85) continue;
+            const w = Math.min(12 + r() * 10, cell - 1.5), dp = Math.min(12 + r() * 10, cell - 1.5);
+            const h = 6 + r() * r() * 45;
+            const mx = a + 12 + cell * (cx + 0.5) + (r() - 0.5) * (cell - w) * 0.8;
+            const mz = c + 12 + cell * (cz + 0.5) + (r() - 0.5) * (cell - dp) * 0.8;
+            const bd = { minX: mx - w / 2, maxX: mx + w / 2, minZ: mz - dp / 2, maxZ: mz + dp / 2 };
+            // Brazilian Quarter (Campos / Popo Aguda): low Afro-Brazilian heritage houses in the west blocks
+            const heritage = i === 0 && j < 3 && r() < 0.7;
+            if (heritage) buildings.push({ ...bd, h: 7 + r() * 2, color: HERITAGE[Math.floor(r() * HERITAGE.length)], heritage: true });
+            else buildings.push({ ...bd, h, color: PALETTE[Math.floor(r() * PALETTE.length)] });
+            colliders.push(bd);
+          }
+      }
+      // palms along sidewalks
+      for (let t = a + 18; t < b - 14; t += 16) {
+        if (r() < 0.55) palms.push({ x: t, z: c + 11.2 });
+        if (r() < 0.55) palms.push({ x: t, z: d - 11.2 });
+      }
+      for (let t = c + 18; t < d - 14; t += 16) {
+        if (r() < 0.4) palms.push({ x: a + 11.2, z: t });
+        if (r() < 0.4) palms.push({ x: b - 11.2, z: t });
+      }
+    }
+  for (const p of palms) colliders.push({ minX: p.x - 0.3, maxX: p.x + 0.3, minZ: p.z - 0.3, maxZ: p.z + 0.3 });
+
+  // billboards
+  const spots: [number, number, number][] = [
+    [30, -89, 0], [-60, 11, Math.PI], [150, 111, Math.PI], [-150, -11, 0], [60, 189, 0], [-30, -111, 0], [111, 50, -Math.PI / 2], [-89, 140, Math.PI / 2],
+  ];
+  spots.forEach(([x, z, rot], k) => billboards.push({ x: remap(x), z: remap(z), rot, text: SIGNS[k][0], bg: SIGNS[k][1], fg: SIGNS[k][2] }));
+
+  // NECOM House landmark: clear its plot, then add the tower
+  {
+    const n = { minX: NECOM.x - NECOM.w / 2, maxX: NECOM.x + NECOM.w / 2, minZ: NECOM.z - NECOM.w / 2, maxZ: NECOM.z + NECOM.w / 2 };
+    const hit = (b: Box) => b.maxX > n.minX - 4 && b.minX < n.maxX + 4 && b.maxZ > n.minZ - 4 && b.minZ < n.maxZ + 4;
+    for (let k = buildings.length - 1; k >= 0; k--) if (hit(buildings[k])) buildings.splice(k, 1);
+    for (let k = colliders.length - 1; k >= 0; k--) if (hit(colliders[k])) colliders.splice(k, 1);
+    buildings.push({ ...n, h: NECOM.h, color: "#d8d4cc" });
+    colliders.push(n);
+  }
+
+  // Danfo bus stops (yellow shelters) on sidewalks
+  const busStops: { x: number; z: number; rot: number; name: string }[] = [];
+  const stopNames = ["CMS", "OBALENDE", "MARINA", "BROAD ST", "IDUMOTA", "TBS", "OYINGBO", "LEKKI"];
+  const stopSpots: [number, number, number][] = [[40, 11, 0], [-150, -89, Math.PI], [140, 189, Math.PI], [-60, 111, 0], [11, -150, Math.PI / 2], [-111, 60, Math.PI / 2], [160, -11, Math.PI], [-170, 189, Math.PI]];
+  stopSpots.forEach(([x, z, rot], k) => {
+    busStops.push({ x: remap(x), z: remap(z), rot, name: stopNames[k] });
+  });
+
+  // concrete utility poles along sidewalks
+  const poles: P[] = [];
+  for (const L of sidewalks)
+    for (let e = 0; e < 4; e++) {
+      const a = L[e], b = L[(e + 1) % 4];
+      const len = Math.hypot(b.x - a.x, b.z - a.z);
+      for (let t = 9; t < len - 5; t += 28) {
+        const x = a.x + ((b.x - a.x) * t) / len, z = a.z + ((b.z - a.z) * t) / len;
+        // push slightly toward road
+        const ox = Math.abs(b.x - a.x) > 1 ? 0 : x > (L[0].x + L[1].x) / 2 ? 1 : -1;
+        const oz = Math.abs(b.z - a.z) > 1 ? 0 : z > (L[1].z + L[2].z) / 2 ? 1 : -1;
+        const p = { x: x + ox * 0.9, z: z + oz * 0.9 };
+        poles.push(p);
+        colliders.push({ minX: p.x - 0.2, maxX: p.x + 0.2, minZ: p.z - 0.2, maxZ: p.z + 0.2 });
+      }
+    }
+
+  // island towers (Victoria Island / Eko Atlantic)
+  const isl: [number, number, number][] = [[-35, 445, 70], [35, 450, 55], [-38, 495, 42], [36, 497, 80], [0, 505, 30]];
+  for (const [x, z, h] of isl) {
+    const bd = { minX: x - 9, maxX: x + 9, minZ: z - 9, maxZ: z + 9 };
+    buildings.push({ ...bd, h, color: "#8fb8de" });
+    colliders.push(bd);
+  }
+
+  // overpass pillars (Marina expressway) along z=-100
+  const pillars: P[] = [];
+  for (let x = -200; x <= 200; x += 25) {
+    pillars.push({ x, z: FLYOVER_Z });
+    colliders.push({ minX: x - 0.7, maxX: x + 0.7, minZ: FLYOVER_Z - 0.7, maxZ: FLYOVER_Z + 0.7 });
+  }
+  // bridge rails
+  colliders.push({ minX: -9, maxX: -7.8, minZ: 214, maxZ: 418 });
+  colliders.push({ minX: 7.8, maxX: 9, minZ: 214, maxZ: 418 });
+
+  // clear corridors for the angled streets
+  const pad = 10;
+  const keep = <T extends Box>(arr: T[]) => { for (let k = arr.length - 1; k >= 0; k--) if (nearDiagonal(arr[k], pad)) arr.splice(k, 1); };
+  keep(buildings); keep(colliders);
+  const ptBox = (p: P) => ({ minX: p.x, maxX: p.x, minZ: p.z, maxZ: p.z });
+  for (const arr of [stalls, palms, poles, busStops, billboards] as P[][]) for (let k = arr.length - 1; k >= 0; k--) if (nearDiagonal(ptBox(arr[k]), pad)) arr.splice(k, 1);
+  for (const d of DIAGONALS) {
+    const off = (s: number) => d.pts.map((p, i) => {
+      const a = d.pts[Math.max(0, i - 1)], b = d.pts[Math.min(d.pts.length - 1, i + 1)];
+      const L = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+      return { x: p.x - ((b.z - a.z) / L) * s, z: p.z + ((b.x - a.x) / L) * s };
+    });
+    routes.push([...off(-4), ...off(4).reverse()]);
+  }
+
+  // traffic routes: rectangles on the road grid, both directions
+  const rects: [number, number, number, number][] = [];
+  for (let k = 0; k < 10; k++) {
+    let i1 = Math.floor(r() * 4), i2 = i1 + 1 + Math.floor(r() * (4 - i1));
+    let j1 = Math.floor(r() * 4), j2 = j1 + 1 + Math.floor(r() * (4 - j1));
+    if (i2 > 4) i2 = 4;
+    if (j2 > 4) j2 = 4;
+    rects.push([LINES[i1], LINES[i2], LINES[j1], LINES[j2]]);
+  }
+  rects.push([-200, 200, -200, 200]);
+  for (const [x1, x2, z1, z2] of rects) {
+    routes.push([{ x: x1 + 4, z: z1 + 4 }, { x: x2 - 4, z: z1 + 4 }, { x: x2 - 4, z: z2 - 4 }, { x: x1 + 4, z: z2 - 4 }]);
+    routes.push([{ x: x1 - 4, z: z1 - 4 }, { x: x1 - 4, z: z2 + 4 }, { x: x2 + 4, z: z2 + 4 }, { x: x2 + 4, z: z1 - 4 }]);
+  }
+  // Marina lagoon curve, both directions (joins grid at its south corners)
+  routes.push([...MARINA_CURVE.map((p) => ({ x: p.x, z: p.z - 4 })), { x: 196, z: -196 }, { x: -196, z: -196 }]);
+  routes.push([...[...MARINA_CURVE].reverse().map((p) => ({ x: p.x, z: p.z + 4 })), { x: -204, z: -204 }]);
+  // Third Mainland-style bridge loop
+  routes.push([{ x: 4, z: 196 }, { x: 4, z: 472 }, { x: -4, z: 472 }, { x: -4, z: 196 }]);
+
+  // yellow steel-truss pedestrian footbridges over the Marina expressway (z=-100)
+  const footbridges: P[] = [-160, -60, 40, 140].map((x) => ({ x: x + 12, z: FLYOVER_Z }));
+
+  return { footbridges, buildings, colliders, palms, stalls, billboards, sidewalks, blocks, routes, pillars, busStops, poles };
+}
+
+export type World = ReturnType<typeof buildWorld>;
+
+export function randomSidewalkPoint(W: World): P {
+  const loop = W.sidewalks[Math.floor(Math.random() * W.sidewalks.length)];
+  const i = Math.floor(Math.random() * 4);
+  const a = loop[i], b = loop[(i + 1) % 4];
+  const f = 0.15 + Math.random() * 0.7;
+  return { x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f };
+}
+
+export function inWorld(x: number, z: number) {
+  return (
+    (Math.abs(x) <= 213 && Math.abs(z) <= 213) ||
+    (Math.abs(x) <= 7.6 && z >= 200 && z <= 422) ||
+    (Math.abs(x) <= 58 && z >= 418 && z <= 515) ||
+    (z < -195 && z > -262 && Math.abs(x) <= 212 && distToMarina(x, z) <= 9.5)
+  );
+}
