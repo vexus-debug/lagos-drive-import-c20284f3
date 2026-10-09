@@ -154,3 +154,85 @@ export function worldUVFacade(m: THREE.Material) {
     );
   };
 }
+
+/** Curtain-wall glass bay (banks, offices): tinted reflective panes, aluminium mullions, spandrel band. */
+export function glassFacade(top: string, mid: string, low: string, frame = "#c9ced3") {
+  const [c, g] = canvas(128, 112);
+  const gr = g.createLinearGradient(0, 0, 128, 112);
+  gr.addColorStop(0, top); gr.addColorStop(0.5, mid); gr.addColorStop(1, low);
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 112);
+  g.fillStyle = "rgba(255,255,255,0.12)";
+  g.beginPath(); g.moveTo(0, 90); g.lineTo(70, 0); g.lineTo(100, 0); g.lineTo(20, 112); g.lineTo(0, 112); g.fill();
+  g.fillStyle = frame;
+  g.fillRect(0, 0, 128, 3); g.fillRect(0, 92, 128, 20);
+  g.fillStyle = "rgba(0,0,0,0.25)"; g.fillRect(0, 95, 128, 2);
+  g.fillStyle = frame;
+  for (const x of [0, 42, 84, 125]) g.fillRect(x, 0, 3, 112);
+  g.fillRect(0, 46, 128, 2);
+  return tex(c);
+}
+
+/** Lagos flat-block bay: plastered wall, louvred window with burglar-proof grille, balcony with railing and laundry. */
+export function residentialFacade() {
+  const [c, g] = canvas(128, 112);
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, 128, 112);
+  noise(g, 128, 112, 1400, ["#d6cfc2", "#ebe5da", "#bdb4a4"], 2);
+  // louvre window
+  g.fillStyle = "#6d5a44"; g.fillRect(14, 18, 46, 52);
+  for (let y = 22; y < 68; y += 5) { g.fillStyle = y % 10 ? "#9db4c0" : "#c6d6dd"; g.fillRect(18, y, 38, 3); }
+  g.fillStyle = "#1e1e1e";
+  for (let x = 18; x < 58; x += 6) g.fillRect(x, 18, 1.5, 52);
+  // balcony door + slab + railing
+  g.fillStyle = "#7a4e2d"; g.fillRect(74, 14, 38, 64);
+  g.fillStyle = "#5b3920"; g.fillRect(92, 14, 2, 64);
+  g.fillStyle = "#cfc6b7"; g.fillRect(66, 78, 56, 6);
+  g.fillStyle = "#2a2a2a";
+  g.fillRect(66, 58, 56, 2);
+  for (let x = 68; x < 122; x += 5) g.fillRect(x, 58, 1.5, 20);
+  // laundry line
+  g.strokeStyle = "#333"; g.lineWidth = 1; g.beginPath(); g.moveTo(66, 46); g.lineTo(122, 46); g.stroke();
+  const cl = ["#e63946", "#2a9d8f", "#ffb703", "#f1faee", "#457b9d", "#8338ec"];
+  for (let x = 70; x < 118; x += 10) { g.fillStyle = cl[(Math.random() * cl.length) | 0]; g.fillRect(x, 46, 7, 9 + Math.random() * 6); }
+  // AC + stains
+  g.fillStyle = "#e4e4e0"; g.fillRect(20, 76, 20, 12);
+  g.fillStyle = "#9a9a96"; for (let i = 0; i < 4; i++) g.fillRect(22, 78 + i * 3, 16, 1);
+  const st = g.createLinearGradient(0, 84, 0, 112);
+  st.addColorStop(0, "rgba(80,70,60,0.35)"); st.addColorStop(1, "rgba(80,70,60,0)");
+  g.fillStyle = st; g.fillRect(66, 84, 56, 28);
+  g.fillStyle = "#b9b0a1"; g.fillRect(0, 104, 128, 8);
+  return tex(c);
+}
+
+/** Hotel bay: warm-lit rooms behind floor-to-ceiling glass, cantilevered balcony and glass balustrade. */
+export function hotelFacade() {
+  const [c, g] = canvas(128, 112);
+  g.fillStyle = "#efe7da"; g.fillRect(0, 0, 128, 112);
+  const gr = g.createLinearGradient(0, 10, 0, 90);
+  gr.addColorStop(0, "#f6d7a0"); gr.addColorStop(1, "#8a6a48");
+  g.fillStyle = gr; g.fillRect(10, 10, 108, 80);
+  g.fillStyle = "#3b2f25"; g.fillRect(62, 10, 4, 80);
+  g.fillStyle = "rgba(255,240,200,0.5)"; g.fillRect(20, 20, 30, 22);
+  g.fillStyle = "rgba(170,210,220,0.5)"; g.fillRect(6, 70, 116, 20);
+  g.fillStyle = "#d9d0c0"; g.fillRect(4, 90, 120, 10);
+  g.fillStyle = "#bdb39f"; g.fillRect(4, 100, 120, 2);
+  return tex(c);
+}
+
+/** Rectangular shop/brand signboard. */
+export function signTexture(text: string, bg: string, fg: string, w = 512, h = 128, accent?: string) {
+  const [c, g] = canvas(w, h);
+  g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  if (accent) { g.fillStyle = accent; g.fillRect(0, h - 14, w, 14); g.fillRect(12, 16, h - 44, h - 44); }
+  g.fillStyle = fg;
+  let size = Math.floor(h * 0.5);
+  const font = (s: number) => `900 ${s}px Bungee, Impact, sans-serif`;
+  g.font = font(size);
+  const maxW = w - (accent ? h + 10 : 30);
+  while (g.measureText(text).width > maxW && size > 12) g.font = font((size -= 2));
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(text, accent ? (w + h - 30) / 2 : w / 2, h * 0.47);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}

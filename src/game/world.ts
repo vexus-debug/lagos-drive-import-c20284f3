@@ -1,7 +1,36 @@
 import type { P } from "./types";
 
 export interface Box { minX: number; maxX: number; minZ: number; maxZ: number }
-export interface Building extends Box { h: number; color: string; heritage?: boolean }
+export type BKind = "bank" | "office" | "hotel" | "residential" | "cafe" | "restaurant" | "shop" | "heritage";
+export interface Building extends Box { h: number; color: string; heritage?: boolean; kind?: BKind; sign?: string }
+
+const BANKS = ["EKO TRUST BANK", "MARINA BANK", "UNITY CAPITAL", "ATLANTIC BANK", "NIGER DELTA BANK", "ISLAND MFB"];
+const CAFES = ["CAFE ISALE EKO", "BEANS & BOLE", "KOFI HOUSE", "ZOBO & CO.", "THE BREW SPOT"];
+const FOOD = ["MAMA PUT KITCHEN", "AMALA SKY", "SUYA JUNCTION", "JOLLOF PALACE", "BUKKA HUT", "CHICKEN EKO"];
+const HOTELS = ["EKO GRAND HOTEL", "ISLAND SUITES", "MARINA PLAZA HOTEL", "LAGOON VIEW INN"];
+const RES = ["#f2e3c6", "#e8c39e", "#d9a07a", "#bfe0c8", "#f4d9a0", "#e6e1d3", "#c9dde8", "#f0c2b0"];
+
+/** Zone each building into a Lagos typology: banks on Marina/Broad St, towers mid-island, homes and food spots elsewhere. */
+function classifyBuildings(list: Building[]) {
+  const r = rng(4242);
+  const pick = <T,>(a: T[]) => a[Math.floor(r() * a.length)];
+  for (const b of list) {
+    if (b.heritage) { b.kind = "heritage"; continue; }
+    const cz = (b.minZ + b.maxZ) / 2, cx = (b.minX + b.maxX) / 2;
+    const finance = cz < -100 && cz > -200;
+    if (cz > 400) { b.kind = r() < 0.4 ? "hotel" : "office"; }
+    else if (b.h > 60) b.kind = "office";
+    else if (b.h > 28) b.kind = finance || r() < 0.3 ? "bank" : r() < 0.4 ? "hotel" : "office";
+    else if (b.h > 16) b.kind = finance && r() < 0.5 ? "bank" : r() < 0.25 ? "hotel" : "residential";
+    else { const k = r(); b.kind = k < 0.22 ? "cafe" : k < 0.45 ? "restaurant" : k < 0.6 ? "shop" : "residential"; }
+    if (Math.abs(cx - NECOM.x) < 1 && Math.abs(cz - NECOM.z) < 1) b.kind = "office";
+    if (b.kind === "bank") b.sign = pick(BANKS);
+    if (b.kind === "cafe") b.sign = pick(CAFES);
+    if (b.kind === "restaurant") b.sign = pick(FOOD);
+    if (b.kind === "hotel") b.sign = pick(HOTELS);
+    if (b.kind === "residential") b.color = pick(RES);
+  }
+}
 
 /** Irregular street lines echoing Lagos Island: deep blocks between Marina and Broad St, tighter old-town blocks north. */
 export const LINES = [-200, -120, 0, 80, 200];
@@ -231,6 +260,7 @@ export function buildWorld() {
   // yellow steel-truss pedestrian footbridges over the Marina expressway (z=-100)
   const footbridges: P[] = [-160, -60, 40, 140].map((x) => ({ x: x + 12, z: FLYOVER_Z }));
 
+  classifyBuildings(buildings);
   return { footbridges, buildings, colliders, palms, stalls, billboards, sidewalks, blocks, routes, pillars, busStops, poles };
 }
 

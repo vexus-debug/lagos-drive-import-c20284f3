@@ -1,3 +1,4 @@
+import { LagosVehicle } from "./Vehicles";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { RealCar, RealPed } from "./RealModels";
@@ -5,7 +6,7 @@ import * as THREE from "three";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { GameAudio } from "./audio";
 import { HUD } from "./HUD";
-import { CarModel, Markers, WorldMesh } from "./Models";
+import { Markers, WorldMesh } from "./Models";
 import { LagosDetails, LagosHeritage } from "./Lagos";
 import { createState, step } from "./sim";
 import { SPECS, type GameState, type Input } from "./types";
@@ -74,7 +75,7 @@ function Sim({ S, W, input, audio }: { S: GameState; W: World; input: React.RefO
         cam.position.lerp(new THREE.Vector3(c.x - fx * back, 2.2 + sp.len * 0.35, c.z - fz * back), k);
         cam.lookAt(c.x + fx * 4, 1.2, c.z + fz * 4);
       } else {
-        const head = c.type === "danfo" ? 2.0 : c.type === "keke" ? 1.55 : 1.25;
+        const head = c.type === "brt" ? 2.6 : c.type === "danfo" ? 2.0 : c.type === "keke" || c.type === "okada" ? 1.6 : 1.25;
         cam.position.set(c.x + fx * sp.len * 0.12 + Math.cos(c.h) * 0.35, head, c.z + fz * sp.len * 0.12 - Math.sin(c.h) * 0.35);
         cam.rotation.set(-0.06, c.h + Math.PI, 0);
       }
@@ -192,7 +193,7 @@ export function Game() {
         <LagosDetails W={W} />
         <LagosHeritage W={W} />
         <Suspense fallback={null}>
-          {S.cars.map((c) => (c.type === "keke" ? <CarModel key={c.id} car={c} /> : <RealCar key={c.id} car={c} />))}
+          {S.cars.map((c) => (c.type === "sedan" || c.type === "police" ? <RealCar key={c.id} car={c} /> : <LagosVehicle key={c.id} car={c} />))}
           {S.peds.map((p) => <RealPed key={p.id} ped={p} />)}
         </Suspense>
         <Markers S={S} />

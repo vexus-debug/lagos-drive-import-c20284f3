@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Car, GameState, Ped } from "./types";
 import { DIAGONALS, FLYOVER_Z, LINES, MARINA_CURVE, type World } from "./world";
+import { Buildings } from "./Buildings";
 import { asphalt, facade, ground, pavement, worldUVFacade } from "./textures";
 
 const mats = new Map<string, THREE.MeshLambertMaterial>();
@@ -68,7 +69,6 @@ export function windowTexture() {
 }
 
 export function WorldMesh({ W }: { W: World }) {
-  const bRef = useRef<THREE.InstancedMesh>(null);
   const trunkRef = useRef<THREE.InstancedMesh>(null);
   const leafRef = useRef<THREE.InstancedMesh>(null);
   const tableRef = useRef<THREE.InstancedMesh>(null);
@@ -77,14 +77,6 @@ export function WorldMesh({ W }: { W: World }) {
 
   useLayoutEffect(() => {
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), v = new THREE.Vector3(), col = new THREE.Color();
-    W.buildings.forEach((b, i) => {
-      v.set((b.minX + b.maxX) / 2, b.h / 2, (b.minZ + b.maxZ) / 2);
-      s.set(b.maxX - b.minX, b.h, b.maxZ - b.minZ);
-      bRef.current!.setMatrixAt(i, m.compose(v, q.identity(), s));
-      bRef.current!.setColorAt(i, col.set(b.color));
-    });
-    bRef.current!.instanceMatrix.needsUpdate = true;
-    if (bRef.current!.instanceColor) bRef.current!.instanceColor.needsUpdate = true;
     const e = new THREE.Euler();
     W.palms.forEach((p, i) => {
       const lean = ((i * 37) % 10) / 60;
@@ -183,10 +175,7 @@ export function WorldMesh({ W }: { W: World }) {
         <mesh key={i} position={[p.x, 4.5, p.z]} castShadow material={mat("#b8b1a3")}><boxGeometry args={[1.4, 9, 1.4]} /></mesh>
       ))}
       {/* buildings */}
-      <instancedMesh ref={bRef} args={[undefined, undefined, W.buildings.length]} castShadow receiveShadow>
-        <boxGeometry />
-        <primitive object={T.fac} attach="material" />
-      </instancedMesh>
+      <Buildings W={W} />
       <instancedMesh ref={trunkRef} args={[undefined, undefined, W.palms.length]} castShadow>
         <cylinderGeometry args={[0.18, 0.3, 7, 5]} />
         <meshLambertMaterial color="#8a6a45" flatShading />
