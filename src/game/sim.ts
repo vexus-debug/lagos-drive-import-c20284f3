@@ -44,10 +44,10 @@ function makeCar(id: number, type: CarType, route: P[], ai: Car["ai"]): Car {
 export function createState(W: World): GameState {
   const cars: Car[] = [];
   let id = 0;
-  for (let k = 0; k < 32; k++) {
+  for (let k = 0; k < 40; k++) {
     const route = W.routes[k % W.routes.length];
     const roll = Math.random();
-    const type: CarType = roll < 0.42 ? "danfo" : roll < 0.65 ? "keke" : "sedan";
+    const type: CarType = roll < 0.3 ? "danfo" : roll < 0.47 ? "keke" : roll < 0.62 ? "okada" : roll < 0.7 ? "brt" : "sedan";
     const c = makeCar(id++, type, route, "traffic");
     const idx = Math.floor(Math.random() * route.length);
     const a = route[idx], b = route[(idx + 1) % route.length];
@@ -59,7 +59,7 @@ export function createState(W: World): GameState {
     c.speed = SPECS[type].max * 0.5;
     cars.push(c);
   }
-  const parkedTypes: CarType[] = ["sedan", "danfo", "keke", "sedan", "danfo"];
+  const parkedTypes: CarType[] = ["sedan", "danfo", "keke", "okada", "danfo"];
   parkedTypes.forEach((t, k) => {
     const c = makeCar(id++, t, [], "parked");
     c.x = 6.6;

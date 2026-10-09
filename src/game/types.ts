@@ -1,6 +1,6 @@
 import type * as THREE from "three";
 
-export type CarType = "danfo" | "keke" | "sedan" | "police";
+export type CarType = "danfo" | "keke" | "sedan" | "police" | "brt" | "okada";
 export type P = { x: number; z: number };
 
 export interface Car {
@@ -89,5 +89,7 @@ export const SPECS: Record<CarType, { len: number; wid: number; max: number; acc
   danfo: { len: 5, wid: 2.2, max: 27, accel: 10, turn: 1.7, r: 2.0, name: "Danfo" },
   keke: { len: 2.6, wid: 1.4, max: 18, accel: 9, turn: 2.5, r: 1.1, name: "Keke Napep" },
   sedan: { len: 4.4, wid: 1.9, max: 40, accel: 15, turn: 2.1, r: 1.8, name: "Sedan" },
+  brt: { len: 12, wid: 2.6, max: 24, accel: 7, turn: 1.2, r: 2.7, name: "BRT Bus" },
+  okada: { len: 2, wid: 0.8, max: 38, accel: 17, turn: 3.0, r: 0.8, name: "Okada" },
   police: { len: 4.6, wid: 2, max: 44, accel: 17, turn: 2.2, r: 1.85, name: "Police Cruiser" },
 };
