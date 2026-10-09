@@ -7,12 +7,6 @@ type Family = "bank" | "office" | "hotel" | "residential" | "street";
 const familyOf = (k: BKind | undefined): Family =>
   k === "bank" || k === "office" || k === "hotel" || k === "residential" ? k : "street";
 
-const SIGN_STYLE: Partial<Record<BKind, [string, string, string]>> = {
-  bank: ["#0b3d2e", "#f5c518", "#e8590c"],
-  cafe: ["#3b2416", "#f6e7c8", "#c58b4b"],
-  restaurant: ["#c1121f", "#ffffff", "#ffb703"],
-  hotel: ["#1b1b2f", "#e9c46a", "#e9c46a"],
-};
 const AWNING: Partial<Record<BKind, string>> = { cafe: "#7a4b2a", restaurant: "#d62828", shop: "#1d4ed8", bank: "#0b3d2e" };
 
 function BSet({ list, mat }: { list: Building[]; mat: THREE.Material }) {
@@ -65,10 +59,10 @@ export function Buildings({ W }: { W: World }) {
     const cache = new Map<string, THREE.Texture>();
     const out: { tex: THREE.Texture; pos: [number, number, number]; rot: number; w: number; h: number }[] = [];
     for (const b of W.buildings) {
-      if (!b.sign || !b.kind) continue;
-      const st = SIGN_STYLE[b.kind]!;
-      const key = b.kind + b.sign;
-      if (!cache.has(key)) cache.set(key, signTexture(b.sign, st[0], st[1], 512, 128, st[2]));
+      if (!b.brand || !b.kind) continue;
+      const B = b.brand;
+      const key = B.name;
+      if (!cache.has(key)) cache.set(key, signTexture(B.name, B.bg, B.fg, 512, 128, B.accent, B.mark, B.markFg));
       const tex = cache.get(key)!;
       const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
       const wx = b.maxX - b.minX, wz = b.maxZ - b.minZ;
@@ -87,7 +81,7 @@ export function Buildings({ W }: { W: World }) {
   const awnings = useMemo(() => {
     const out: { pos: [number, number, number]; size: [number, number, number]; rotX: number; rotY: number; color: string }[] = [];
     for (const b of W.buildings) {
-      const col = b.kind ? AWNING[b.kind] : undefined;
+      const col = b.brand ? (b.brand.bg === "#ffffff" ? b.brand.fg : b.brand.bg) : b.kind ? AWNING[b.kind] : undefined;
       if (!col || b.h > 60) continue;
       const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
       const wx = b.maxX - b.minX, wz = b.maxZ - b.minZ;

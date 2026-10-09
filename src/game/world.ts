@@ -2,12 +2,48 @@ import type { P } from "./types";
 
 export interface Box { minX: number; maxX: number; minZ: number; maxZ: number }
 export type BKind = "bank" | "office" | "hotel" | "residential" | "cafe" | "restaurant" | "shop" | "heritage";
-export interface Building extends Box { h: number; color: string; heritage?: boolean; kind?: BKind; sign?: string }
+export interface Building extends Box { h: number; color: string; heritage?: boolean; kind?: BKind; sign?: string; brand?: Brand }
 
-const BANKS = ["EKO TRUST BANK", "MARINA BANK", "UNITY CAPITAL", "ATLANTIC BANK", "NIGER DELTA BANK", "ISLAND MFB"];
-const CAFES = ["CAFE ISALE EKO", "BEANS & BOLE", "KOFI HOUSE", "ZOBO & CO.", "THE BREW SPOT"];
-const FOOD = ["MAMA PUT KITCHEN", "AMALA SKY", "SUYA JUNCTION", "JOLLOF PALACE", "BUKKA HUT", "CHICKEN EKO"];
-const HOTELS = ["EKO GRAND HOTEL", "ISLAND SUITES", "MARINA PLAZA HOTEL", "LAGOON VIEW INN"];
+export interface Brand { name: string; bg: string; fg: string; accent: string; mark: string; markFg: string }
+const br = (name: string, bg: string, fg: string, accent: string, mark: string, markFg = fg): Brand => ({ name, bg, fg, accent, mark, markFg });
+/** Real Lagos brands with their house colours; the logo badge is a stylised initial in brand colours. */
+const BANKS = [
+  br("ZENITH BANK", "#ffffff", "#e30613", "#e30613", "Z", "#ffffff"),
+  br("GTCO", "#e35205", "#ffffff", "#ffffff", "GT", "#e35205"),
+  br("FIRSTBANK", "#002f6c", "#ffffff", "#d4a017", "1", "#002f6c"),
+  br("ACCESS BANK", "#ffffff", "#003b75", "#f68b1f", "A", "#ffffff"),
+  br("UBA", "#d71920", "#ffffff", "#ffffff", "UBA", "#d71920"),
+  br("STANBIC IBTC", "#0033a1", "#ffffff", "#ffffff", "S", "#0033a1"),
+  br("FIDELITY BANK", "#002d72", "#ffffff", "#7ab800", "F", "#ffffff"),
+  br("WEMA BANK", "#8a1c7c", "#ffffff", "#ffffff", "W", "#8a1c7c"),
+  br("ECOBANK", "#004b87", "#ffffff", "#00a3ad", "e", "#ffffff"),
+  br("STERLING", "#ffffff", "#d0021b", "#d0021b", "S", "#ffffff"),
+];
+const CAFES = [
+  br("CAFE NEO", "#111111", "#ffffff", "#ffffff", "N", "#111111"),
+  br("ART CAFE", "#2b1d14", "#f2d7a6", "#f2d7a6", "A", "#2b1d14"),
+  br("COLD STONE", "#4b2e83", "#ffffff", "#e4a11b", "CS", "#4b2e83"),
+  br("KRISPY KREME", "#00704a", "#ffffff", "#e2231a", "KK", "#ffffff"),
+];
+const FOOD = [
+  br("CHICKEN REPUBLIC", "#e31b23", "#ffffff", "#ffd200", "CR", "#e31b23"),
+  br("MR BIGGS", "#e2001a", "#ffde00", "#ffde00", "B", "#e2001a"),
+  br("SWEET SENSATION", "#ffffff", "#c8102e", "#c8102e", "S", "#ffffff"),
+  br("KILIMANJARO", "#d4111b", "#ffffff", "#ffc20e", "K", "#d4111b"),
+  br("TANTALIZERS", "#00843d", "#ffffff", "#f7941d", "T", "#ffffff"),
+  br("DOMINO'S PIZZA", "#006491", "#ffffff", "#e31837", "D", "#ffffff"),
+  br("KFC", "#a3080c", "#ffffff", "#ffffff", "KFC", "#a3080c"),
+  br("BUKKA HUT", "#1a1a1a", "#f6a01a", "#f6a01a", "BH", "#1a1a1a"),
+  br("MAMA CASS", "#c8102e", "#ffffff", "#ffffff", "MC", "#c8102e"),
+];
+const HOTELS = [
+  br("EKO HOTELS & SUITES", "#0b2341", "#d9b26f", "#d9b26f", "E", "#0b2341"),
+  br("FEDERAL PALACE", "#1d1d1b", "#c9a227", "#c9a227", "FP", "#1d1d1b"),
+  br("RADISSON BLU", "#ffffff", "#0b2341", "#0b2341", "R", "#ffffff"),
+  br("LAGOS CONTINENTAL", "#14213d", "#ffffff", "#e5b25d", "LC", "#14213d"),
+  br("THE ORIENTAL HOTEL", "#7a0e1a", "#f3d27a", "#f3d27a", "O", "#7a0e1a"),
+  br("FOUR POINTS SHERATON", "#ffffff", "#5b2d82", "#5b2d82", "4P", "#ffffff"),
+];
 const RES = ["#f2e3c6", "#e8c39e", "#d9a07a", "#bfe0c8", "#f4d9a0", "#e6e1d3", "#c9dde8", "#f0c2b0"];
 
 /** Zone each building into a Lagos typology: banks on Marina/Broad St, towers mid-island, homes and food spots elsewhere. */
@@ -24,10 +60,10 @@ function classifyBuildings(list: Building[]) {
     else if (b.h > 16) b.kind = finance && r() < 0.5 ? "bank" : r() < 0.25 ? "hotel" : "residential";
     else { const k = r(); b.kind = k < 0.22 ? "cafe" : k < 0.45 ? "restaurant" : k < 0.6 ? "shop" : "residential"; }
     if (Math.abs(cx - NECOM.x) < 1 && Math.abs(cz - NECOM.z) < 1) b.kind = "office";
-    if (b.kind === "bank") b.sign = pick(BANKS);
-    if (b.kind === "cafe") b.sign = pick(CAFES);
-    if (b.kind === "restaurant") b.sign = pick(FOOD);
-    if (b.kind === "hotel") b.sign = pick(HOTELS);
+    if (b.kind === "bank") { b.brand = pick(BANKS); b.sign = b.brand.name; }
+    if (b.kind === "cafe") { b.brand = pick(CAFES); b.sign = b.brand.name; }
+    if (b.kind === "restaurant") { b.brand = pick(FOOD); b.sign = b.brand.name; }
+    if (b.kind === "hotel") { b.brand = pick(HOTELS); b.sign = b.brand.name; }
     if (b.kind === "residential") b.color = pick(RES);
   }
 }
