@@ -218,19 +218,34 @@ export function hotelFacade() {
   return tex(c);
 }
 
-/** Rectangular shop/brand signboard. */
-export function signTexture(text: string, bg: string, fg: string, w = 512, h = 128, accent?: string) {
+/** Brand signboard: house-colour panel, logo badge with the brand initial(s), and the name. */
+export function signTexture(text: string, bg: string, fg: string, w = 512, h = 128, accent?: string, mark?: string, markFg?: string) {
   const [c, g] = canvas(w, h);
   g.fillStyle = bg; g.fillRect(0, 0, w, h);
-  if (accent) { g.fillStyle = accent; g.fillRect(0, h - 14, w, 14); g.fillRect(12, 16, h - 44, h - 44); }
-  g.fillStyle = fg;
-  let size = Math.floor(h * 0.5);
   const font = (s: number) => `900 ${s}px Bungee, Impact, sans-serif`;
+  let left = 30;
+  if (accent) {
+    g.fillStyle = accent; g.fillRect(0, h - 10, w, 10);
+    const bs = h - 34;
+    g.fillStyle = accent;
+    g.beginPath(); g.roundRect(12, 12, bs, bs, 14); g.fill();
+    if (mark) {
+      g.fillStyle = markFg ?? bg;
+      let ms = Math.floor(bs * 0.7);
+      g.font = font(ms);
+      while (g.measureText(mark).width > bs - 12 && ms > 10) g.font = font((ms -= 2));
+      g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(mark, 12 + bs / 2, 12 + bs / 2 + 2);
+    }
+    left = bs + 24;
+  }
+  g.fillStyle = fg;
+  let size = Math.floor(h * 0.42);
   g.font = font(size);
-  const maxW = w - (accent ? h + 10 : 30);
+  const maxW = w - left - 16;
   while (g.measureText(text).width > maxW && size > 12) g.font = font((size -= 2));
   g.textAlign = "center"; g.textBaseline = "middle";
-  g.fillText(text, accent ? (w + h - 30) / 2 : w / 2, h * 0.47);
+  g.fillText(text, left + maxW / 2, h * 0.47);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
