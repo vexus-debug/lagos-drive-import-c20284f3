@@ -15,7 +15,7 @@ const SIGN_STYLE: Partial<Record<BKind, [string, string, string]>> = {
 };
 const AWNING: Partial<Record<BKind, string>> = { cafe: "#7a4b2a", restaurant: "#d62828", shop: "#1d4ed8", bank: "#0b3d2e" };
 
-function Set({ list, mat }: { list: Building[]; mat: THREE.Material }) {
+function BSet({ list, mat }: { list: Building[]; mat: THREE.Material }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   useLayoutEffect(() => {
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), v = new THREE.Vector3(), c = new THREE.Color();
@@ -105,7 +105,7 @@ export function Buildings({ W }: { W: World }) {
 
   return (
     <group>
-      {(Object.keys(groups) as Family[]).map((f) => <Set key={f} list={groups[f]} mat={mats[f]} />)}
+      {(Object.keys(groups) as Family[]).map((f) => <BSet key={f} list={groups[f]} mat={mats[f]} />)}
       {signs.map((s, i) => (
         <mesh key={i} position={s.pos} rotation-y={s.rot}>
           <planeGeometry args={[s.w, s.h]} />
@@ -113,8 +113,7 @@ export function Buildings({ W }: { W: World }) {
         </mesh>
       ))}
       {awnings.map((a, i) => (
-        <mesh key={i} position={a.pos} rotation={[0, a.rotY, 0]} castShadow>
-          <group rotation-x={a.rotX} />
+        <mesh key={i} position={a.pos} rotation={[a.rotX, a.rotY, 0, "YXZ"]} castShadow>
           <boxGeometry args={a.size} />
           <meshLambertMaterial color={a.color} />
         </mesh>
