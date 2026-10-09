@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { GameAudio } from "./audio";
 import { HUD } from "./HUD";
-import { CarModel, Markers, WorldMesh } from "./Models";
+import { Markers, WorldMesh } from "./Models";
 import { LagosDetails, LagosHeritage } from "./Lagos";
 import { createState, step } from "./sim";
 import { SPECS, type GameState, type Input } from "./types";
